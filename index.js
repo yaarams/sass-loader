@@ -98,6 +98,29 @@ module.exports = function (content) {
         return path.dirname(context);
     }
 
+    function onSuccess(result) {
+        if (result.map && result.map !== '{}') {
+            result.map = JSON.parse(result.map);
+            result.map.file = resourcePath;
+            // The first source is 'stdin' according to libsass because we've used the data input
+            // Now let's override that value with the correct relative path
+            result.map.sources[0] = path.relative(self.options.output.path, resourcePath);
+        } else {
+            result.map = null;
+        }
+
+        callback(null, result.css.toString(), result.map);
+    }
+
+    function onError(err) {
+            var e = err;
+            if (typeof e === 'string') {
+                e = JSON.parse(e);
+            }
+            formatSassError(e);
+        callback(err);
+    }
+
     this.cacheable();
 
     opt = utils.parseQuery(this.query);
@@ -130,35 +153,29 @@ module.exports = function (content) {
     // opt.importer
     opt.importer = getWebpackImporter();
 
-
     // start the actual rendering
     if (isSync) {
         try {
             return sass.renderSync(opt).css.toString();
         } catch (err) {
-            formatSassError(err);
-            throw err;
+            var e = err;
+            var parsed;
+
+            // Strangely node-sass is returning a JSON string as error...
+            if (typeof e === 'string') {
+                parsed = JSON.parse(e);
+                e = new Error();
+                Object.keys(parsed).forEach(function (key) {
+                    e[key] = parsed[key];
+                });
+            }
+            formatSassError(e);
+            throw e;
         }
     }
-    sass.render(opt, function onRender(err, result) {
-        if (err) {
-            formatSassError(err);
-            callback(err);
-            return;
-        }
-
-        if (result.map && result.map !== '{}') {
-            result.map = JSON.parse(result.map);
-            result.map.file = resourcePath;
-            // The first source is 'stdin' according to libsass because we've used the data input
-            // Now let's override that value with the correct relative path
-            result.map.sources[0] = path.relative(self.options.output.path, resourcePath);
-        } else {
-            result.map = null;
-        }
-
-        callback(null, result.css.toString(), result.map);
-    });
+    opt.success = onSuccess;
+    opt.error = onError;
+    sass.render(opt);
 };
 
 /**
