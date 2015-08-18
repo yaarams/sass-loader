@@ -81,6 +81,11 @@ module.exports = function (content) {
                 var dirContext;
                 var request;
 
+                if (opt.root && url.indexOf('/src/main') > -1) {
+                    url = url.replace('/src/main', '');
+                    url = url.replace(/^(\.\.\/)*/g,'/');
+                }
+
                 // node-sass returns UNIX-style paths
                 fileContext = path.normalize(fileContext);
                 request = utils.urlToRequest(url, opt.root);
@@ -92,6 +97,11 @@ module.exports = function (content) {
         return function asyncWebpackImporter(url, fileContext, done) {
             var dirContext;
             var request;
+
+            if (opt.root && url.indexOf('/src/main') > -1) {
+                url = url.replace('/src/main', '');
+                url = url.replace(/^(\.\.\/)*/g,'/');
+            }
 
             // node-sass returns UNIX-style paths
             fileContext = path.normalize(fileContext);
