@@ -233,6 +233,17 @@ module.exports = function (content) {
 
     opt.importer = getWebpackImporter();
 
+    if (opt.functions) {
+        var obj = {};
+        var functions = opt.functions.split(',');
+        functions.forEach(function(fn){
+            obj[fn] = function() {
+                return new sass.types.String('');
+            }
+        });
+        opt.functions = obj;
+    }
+
     // start the actual rendering
     if (isSync) {
         try {
